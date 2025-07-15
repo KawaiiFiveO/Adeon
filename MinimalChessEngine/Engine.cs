@@ -24,14 +24,13 @@ namespace MinimalChessEngine
 
         internal void SetStyle(string styleName)
         {
-            // The GUI sends "The_Chess.com_Cheater", so we replace underscores
-            switch (styleName.Replace('_', ' '))
+            switch (styleName)
             {
                 case "Easy":
                     _currentStyle = PlayStyle.Easy;
                     break;
                 // ADD THE NEW CASE
-                case "The Chess.com Cheater":
+                case "TheChessDotComCheater":
                     _currentStyle = PlayStyle.Cheater;
                     break;
                 case "Normal":
@@ -68,7 +67,7 @@ namespace MinimalChessEngine
 
             // Cheater Logic: Decide on the time budget BEFORE starting the search
             int timeForMove = maxTime;
-            if (_currentStyle.Name == "The Chess.com Cheater" && IsInLosingPosition())
+            if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
             {
                 if (_random.NextDouble() < _currentStyle.PanicChance)
                 {
@@ -88,7 +87,7 @@ namespace MinimalChessEngine
             Stop();
 
             // Cheater Logic: Decide on the time budget BEFORE starting the search
-            if (_currentStyle.Name == "The Chess.com Cheater" && IsInLosingPosition())
+            if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
             {
                 if (_random.NextDouble() < _currentStyle.PanicChance)
                 {

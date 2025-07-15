@@ -39,7 +39,7 @@ namespace MinimalChessEngine
                     Console.WriteLine($"id name {NAME_VERSION}");
                     Console.WriteLine($"id author {AUTHOR}");
                     Console.WriteLine($"option name Hash type spin default {Transpositions.DEFAULT_SIZE_MB} min 1 max 2047");
-                    Console.WriteLine($"option name Style type combo default Normal var Normal var Easy var The Chess.com Cheater");
+                    Console.WriteLine($"option name Style type combo default Normal var Normal var Easy var TheChessDotComCheater");
                     Console.WriteLine("uciok");
                     break;
                 case "isready":

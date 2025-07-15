@@ -24,6 +24,6 @@
         // ADD THE NEW STYLE
         // It plays at Medium (depth 8) normally.
         // If the score drops below -1.5 pawns (-150), it has a 75% chance to panic.
-        public static readonly PlayStyle Cheater = new PlayStyle("The Chess.com Cheater", 8, -150, 0.75);
+        public static readonly PlayStyle Cheater = new PlayStyle("TheChessDotComCheater", 8, -150, 0.75);
     }
 }
