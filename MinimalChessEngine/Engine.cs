@@ -120,7 +120,7 @@ namespace MinimalChessEngine
                 Uci.Log("Time scramble! Making a move as fast as possible.");
                 // Override time control for a super fast move.
                 _time.Go(100, 0, 1); // 100ms budget
-                searchDepth = 1; // Force a depth-1 search for speed.
+                //searchDepth = 1; // Force a depth-1 search for speed.
             }
             else if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
             {
@@ -230,11 +230,25 @@ namespace MinimalChessEngine
             {
                 Board position = new Board(_board);
                 foreach (Move move in pv)
+                {
                     position.Play(move);
+                }
 
                 while (result.Count < depth && Transpositions.GetBestMove(position, out Move move))
                 {
-                    if (move == default) break;
+                    // 1. Check if the move is pseudo-legal for the current position.
+                    if (move == default || !position.IsPlayable(move))
+                    {
+                        break; // Stop if the move is invalid or not found
+                    }
+
+                    // 2. Check if the move is truly legal (doesn't leave king in check).
+                    Board child = new Board(position, move);
+                    if (child.IsChecked(position.SideToMove))
+                    {
+                        break; // Stop if the move is illegal
+                    }
+
                     position.Play(move);
                     result.Add(move);
                 }

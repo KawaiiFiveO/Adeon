@@ -42,7 +42,7 @@ In your frontend, you can set a Style for Adeon. These profiles change the behav
 
 ### Strength
 
-Adeon's rating is unknown; more testing is required to determine this. It is currently estimated to play at an ~1800 Elo level.
+Adeon is currently estimated to play at an ~2100 Elo level.
 
 ### TODO
 

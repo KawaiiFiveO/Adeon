@@ -110,6 +110,35 @@ namespace MinimalChessEngine
                 return QuiescenceSearch(position, ply, alpha, beta);
             }
 
+            // --- NULL MOVE PRUNING (NMP) ---
+            // We add several safety checks to avoid pruning in the wrong situations.
+            // 1. Don't do NMP if the side to move is in check.
+            // 2. Don't do NMP if we are very close to the search horizon (depth < 3).
+            // 3. Don't do NMP if there are very few pieces left (potential zugzwang).
+            // 4. Only try NMP if the static evaluation is already good (above beta).
+
+            // A simple check for "few pieces" - e.g., no major pieces left for the current player.
+            bool hasMajorPieces = HasMajorPieces(position, position.SideToMove);
+
+            if (!isChecked && depth >= 3 && hasMajorPieces && (int)position.SideToMove * position.Score >= beta)
+            {
+                // The depth reduction factor 'R' is standard. 2 or 3 are common values.
+                int R = 2;
+                Board nullMoveBoard = new Board(position);
+                nullMoveBoard.PlayNullMove();
+
+                // Search with a "null window" (-beta, -beta+1) to make the search faster.
+                // We only care if the score is >= beta.
+                int nullScore = -AlphaBeta(nullMoveBoard, ply + 1, -beta, -beta + 1, depth - 1 - R);
+
+                if (nullScore >= beta)
+                {
+                    // The null move was "too good". The opponent couldn't refute our strong position
+                    // even with an extra turn. We can prune this node and return beta.
+                    return beta;
+                }
+            }
+
             NodesVisited++;
             var moves = GetOrderedMoves(position, ply, isChecked);
             if (moves.Count == 0)
@@ -118,9 +147,11 @@ namespace MinimalChessEngine
             Move bestMove = default;
             int scoreType = 0;
             int legalMovesPlayed = 0;
+            int movesSearched = 0;
 
             foreach (var move in moves)
             {
+                movesSearched++;
                 Board child = new Board(position, move);
 
                 // CRITICAL FIX: Check if the move was legal.
@@ -134,7 +165,28 @@ namespace MinimalChessEngine
 
                 int score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
 
-                if (Aborted) return 0;
+                // --- Late Move Reductions Logic ---
+                if (depth >= 3 && movesSearched > 4 && !isChecked && position[move.ToSquare] == Piece.None)
+                {
+                    // This is a quiet move late in the list. Search with reduced depth.
+                    score = -AlphaBeta(child, ply + 1, -alpha - 1, -alpha, depth - 2);
+
+                    // If it was better than expected, we must re-search at full depth.
+                    if (score > alpha)
+                    {
+                        score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
+                    }
+                }
+                else
+                {
+                    // Search the first few moves, or all moves in check, at full depth.
+                    score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
+                }
+
+                if (Aborted)
+                {
+                    return 0;
+                }
 
                 if (score > alpha)
                 {
@@ -374,6 +426,25 @@ namespace MinimalChessEngine
             if ((file == 0 || myPawns[file - 1] == 0) && (file == 7 || myPawns[file + 1] == 0)) value -= 12;
             if (enemyRooks[file] > 0) value -= 8;
             return value;
+        }
+
+        // This is a simple way to check for potential zugzwang positions.
+        private bool HasMajorPieces(Board board, Color side)
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                Piece p = board[i];
+                if (p != Piece.None && p.Color() == side)
+                {
+                    Piece type = p & Piece.TypeMask;
+                    if (type != Piece.Pawn && type != Piece.King)
+                    {
+                        // Found a Rook, Knight, Bishop, or Queen.
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }
