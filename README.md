@@ -4,6 +4,8 @@
 
 A simple UCI-compliant chess engine, written in C# using the [MinimalChess](https://github.com/lithander/MinimalChessEngine) library. Based on code from the [TIChess 4.0](http://tict.ticalc.org/projects.html) engine.
 
+Adeon has a notable feature: its "Style" profiles allow you to customize the playstyle of the engine. Choose from existing profiles, or create your own!
+
 ### Features
 
 *   **Search Algorithm:** A modernized port of TIChess's **NegaMax Alpha-Beta** search algorithm.
@@ -25,14 +27,27 @@ A simple UCI-compliant chess engine, written in C# using the [MinimalChess](http
 
 Download a binary from the [Releases](https://github.com/KawaiiFiveO/Adeon/releases), then use it with a frontend such as [CuteChess](https://github.com/cutechess/cutechess).
 
+### Profiles
+
+In your frontend, you can set a Style for Adeon. These profiles change the behavior of the engine. Currently, the profiles are:
+
+*  **Normal:** Adeon will play at full strength.
+*  **Easy:** Adeon will limit searching to a depth of 5. This is comparable to playing TIChess on a real calculator.
+*  **The Chess.com Cheater:** Try it for yourself and see ;)
+
+### Sample Games
+
+*  [Adeon (Easy) vs. Toledo NanoChess (~1000 Elo)](https://lichess.org/PuLBl7df)
+*  [MinimalChess 0.4 (1816 Elo) vs. Adeon (Cheater)](https://lichess.org/zuWyxMC2)
+
 ### Strength
 
-Adeon's rating is unknown; more testing is required to determine this. It is currently estimated to play at an ~1800 ELO level.
+Adeon's rating is unknown; more testing is required to determine this. It is currently estimated to play at an ~1800 Elo level.
 
 ### TODO
 
 * Implement opening book file
-* Add playing profiles
+* Add more playing profiles
 
 ### Credits
 
