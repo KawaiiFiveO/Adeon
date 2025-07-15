@@ -18,7 +18,7 @@
         }
 
         // Define static instances for each play style
-        public static readonly PlayStyle Normal = new PlayStyle("Normal", 64);
+        public static readonly PlayStyle Normal = new PlayStyle("Normal", 99);
         public static readonly PlayStyle Easy = new PlayStyle("Easy", 5);
 
         // ADD THE NEW STYLE

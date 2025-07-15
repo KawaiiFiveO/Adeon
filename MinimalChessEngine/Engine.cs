@@ -60,75 +60,24 @@ namespace MinimalChessEngine
             _history.Add(new Board(_board));
         }
 
-        // CHANGE THE GO METHODS TO HANDLE THE NEW LOGIC
+        // The Go methods are now simplified. They just pass the time info along.
         internal void Go(int maxDepth, int maxTime, long maxNodes)
         {
             Stop();
-
-            // This method is typically for "go movetime X".
-            // The time scramble logic is less relevant here, but we can add it for completeness.
-            int timeForMove = maxTime;
-            const int scrambleTimeMs = 1000; // 1 second
-
-            if (maxTime <= scrambleTimeMs)
-            {
-                Uci.Log("Time scramble! Making a move as fast as possible.");
-                // Use a tiny fraction of the time to ensure we don't flag.
-                timeForMove = maxTime / 10;
-            }
-            else if (_currentStyle.Name == "The Chess.com Cheater" && IsInLosingPosition())
-            {
-                if (_random.NextDouble() < _currentStyle.PanicChance)
-                {
-                    timeForMove = (int)(maxTime * 0.9);
-                    Uci.Log("Cheater mode: PANICKING on movetime! Thinking for a long time...");
-                }
-            }
-
-            _time.Go(timeForMove);
+            _time.Go(maxTime);
             StartSearch(maxDepth, maxNodes);
         }
 
         internal void Go(int maxTime, int increment, int movesToGo, int maxDepth, long maxNodes)
         {
             Stop();
-
-            // === NEW TIME SCRAMBLE LOGIC ===
-            const int scrambleTimeMs = 1000; // 1 second threshold
-            if (maxTime <= scrambleTimeMs)
+            // For the cheater, we might adjust movesToGo to save time, but we do it in StartSearch.
+            if (_currentStyle.Name == "TheChessDotComCheater" && !IsInLosingPosition())
             {
-                Uci.Log("Time scramble! Making a move as fast as possible.");
-                // We need to find a move in a fraction of a second.
-                // Give it a tiny budget and tell it there's only one move to go.
-                _time.Go(100, 0, 1); // 100ms, no increment, 1 move to go.
-                StartSearch(1, maxNodes); // Force a depth-1 search for maximum speed.
-                return; // Exit here to skip all other logic.
+                // Not losing, so play conservatively to save time for a potential future panic.
+                movesToGo += 10;
             }
-
-            // Cheater Logic: Decide on the time budget BEFORE starting the search
-            if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
-            {
-                if (_random.NextDouble() < _currentStyle.PanicChance)
-                {
-                    // PANIC! Use a huge chunk of the remaining time.
-                    int panicTime = Math.Max(10000, maxTime / 4);
-                    Uci.Log("Cheater mode: PANICKING! Thinking for a long time...");
-                    _time.Go(panicTime, increment, 1); // Use a movesToGo of 1 to spend the time now
-                }
-                else
-                {
-                    // Not panicking, play normally but save time.
-                    // We'll pretend there are more moves to go than there really are.
-                    int conservativeMovesToGo = movesToGo + 10;
-                    _time.Go(maxTime, increment, conservativeMovesToGo);
-                }
-            }
-            else
-            {
-                // Not the cheater style, or not losing. Play normally.
-                _time.Go(maxTime, increment, movesToGo);
-            }
-
+            _time.Go(maxTime, increment, movesToGo);
             StartSearch(maxDepth, maxNodes);
         }
 
@@ -161,8 +110,41 @@ namespace MinimalChessEngine
 
         private void StartSearch(int maxDepth, long maxNodes)
         {
-            int searchDepth = (maxDepth == 64) ? _currentStyle.MaxDepth : maxDepth;
+            int searchDepth = (maxDepth == 99) ? _currentStyle.MaxDepth : maxDepth;
             _maxNodes = maxNodes;
+
+            const int scrambleTimeMs = 1500; // 1.5 second threshold for a scramble
+
+            if (_time.TimeRemainingWithMargin <= scrambleTimeMs)
+            {
+                Uci.Log("Time scramble! Making a move as fast as possible.");
+                // Override time control for a super fast move.
+                _time.Go(100, 0, 1); // 100ms budget
+                searchDepth = 1; // Force a depth-1 search for speed.
+            }
+            else if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
+            {
+                if (_random.NextDouble() < _currentStyle.PanicChance)
+                {
+                    Uci.Log("Cheater mode: PANICKING! Thinking deeper and for a long time...");
+
+                    // 1. Think Deeper: Override the style's depth limit for this move.
+                    searchDepth = PlayStyle.Normal.MaxDepth; // Search as deep as possible (like "Normal" mode)
+
+                    // 2. Think Longer (Safely):
+                    const int safetyBufferMs = 2000; // 2 seconds
+                    int availableTime = _time.TimeRemainingWithMargin - safetyBufferMs;
+
+                    if (availableTime > 0)
+                    {
+                        // Use up to 50% of the available time.
+                        int panicTime = availableTime / 2;
+                        _time.Go(panicTime, _time.Increment, 1); // Use the existing increment
+                    }
+                    // If not enough time to panic safely, it will just use the default time calculated in Go().
+                }
+            }
+
 
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms! Style: {_currentStyle.Name}, Max Depth: {searchDepth}");
 

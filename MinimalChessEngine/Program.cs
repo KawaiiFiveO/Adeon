@@ -116,7 +116,7 @@ namespace MinimalChessEngine
             //40 Moves in 5 Minutes, 1 second increment per Move =  go wtime 300000 btime 300000 movestogo 40 winc 1000 binc 1000 movestogo 40
             //5 Minutes total, no increment (sudden death) = go wtime 300000 btime 300000
 
-            TryParse(tokens, "depth", out int maxDepth, 64);
+            TryParse(tokens, "depth", out int maxDepth, 99);
             TryParse(tokens, "movetime", out int maxTime, int.MaxValue);
             TryParse(tokens, "nodes", out long maxNodes, long.MaxValue);
             TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move

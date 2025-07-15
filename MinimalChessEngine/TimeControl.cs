@@ -10,12 +10,12 @@ namespace MinimalChessEngine
         const int MAX_TIME_REMAINING = int.MaxValue / 3; //large but not too large to cause overflow issues
 
         private int _movesToGo;
-        private int _increment;
+        public int Increment { get; private set; }
         private int _remaining;
         private long _t0 = -1;
         private long _tN = -1;
 
-        public int TimePerMoveWithMargin => (_remaining + (_movesToGo - 1) * _increment) / _movesToGo - TIME_MARGIN;
+        public int TimePerMoveWithMargin => (_remaining + (_movesToGo - 1) * Increment) / _movesToGo - TIME_MARGIN;
         public int TimeRemainingWithMargin => _remaining - TIME_MARGIN;
 
         private long Now => Stopwatch.GetTimestamp();
@@ -31,7 +31,7 @@ namespace MinimalChessEngine
         private void Reset()
         {
             _movesToGo = 1;
-            _increment = 0;
+            Increment = 0;
             _remaining = MAX_TIME_REMAINING; 
             _t0 = Now;
             _tN = _t0;
@@ -58,7 +58,7 @@ namespace MinimalChessEngine
         {
             Reset();
             _remaining = Math.Min(time, MAX_TIME_REMAINING);
-            _increment = increment;
+            Increment = increment;
             _movesToGo = movesToGo;
         }
 
@@ -72,7 +72,7 @@ namespace MinimalChessEngine
             int total = elapsed + estimate;
 
             //no increment... we need to stay within the per-move time budget
-            if (_increment == 0 && total > TimePerMoveWithMargin)
+            if (Increment == 0 && total > TimePerMoveWithMargin)
                 return false;
             //we have already exceeded the average move
             if (elapsed > TimePerMoveWithMargin)
@@ -90,7 +90,7 @@ namespace MinimalChessEngine
 
         public bool CheckTimeBudget()
         {
-            if (_increment == 0)
+            if (Increment == 0)
                 return Elapsed > TimePerMoveWithMargin;
             else
                 return Elapsed > TimeRemainingWithMargin;
