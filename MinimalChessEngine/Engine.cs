@@ -65,16 +65,23 @@ namespace MinimalChessEngine
         {
             Stop();
 
-            // Cheater Logic: Decide on the time budget BEFORE starting the search
+            // This method is typically for "go movetime X".
+            // The time scramble logic is less relevant here, but we can add it for completeness.
             int timeForMove = maxTime;
-            if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
+            const int scrambleTimeMs = 1000; // 1 second
+
+            if (maxTime <= scrambleTimeMs)
+            {
+                Uci.Log("Time scramble! Making a move as fast as possible.");
+                // Use a tiny fraction of the time to ensure we don't flag.
+                timeForMove = maxTime / 10;
+            }
+            else if (_currentStyle.Name == "The Chess.com Cheater" && IsInLosingPosition())
             {
                 if (_random.NextDouble() < _currentStyle.PanicChance)
                 {
-                    // PANIC! Use a huge chunk of the remaining time.
-                    // Let's say 1/4 of the total time, but not less than 10 seconds.
-                    timeForMove = Math.Max(10000, _time.TimeRemainingWithMargin / 4);
-                    Uci.Log("Cheater mode: PANICKING! Thinking for a long time...");
+                    timeForMove = (int)(maxTime * 0.9);
+                    Uci.Log("Cheater mode: PANICKING on movetime! Thinking for a long time...");
                 }
             }
 
@@ -85,6 +92,18 @@ namespace MinimalChessEngine
         internal void Go(int maxTime, int increment, int movesToGo, int maxDepth, long maxNodes)
         {
             Stop();
+
+            // === NEW TIME SCRAMBLE LOGIC ===
+            const int scrambleTimeMs = 1000; // 1 second threshold
+            if (maxTime <= scrambleTimeMs)
+            {
+                Uci.Log("Time scramble! Making a move as fast as possible.");
+                // We need to find a move in a fraction of a second.
+                // Give it a tiny budget and tell it there's only one move to go.
+                _time.Go(100, 0, 1); // 100ms, no increment, 1 move to go.
+                StartSearch(1, maxNodes); // Force a depth-1 search for maximum speed.
+                return; // Exit here to skip all other logic.
+            }
 
             // Cheater Logic: Decide on the time budget BEFORE starting the search
             if (_currentStyle.Name == "TheChessDotComCheater" && IsInLosingPosition())
