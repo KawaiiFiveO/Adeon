@@ -21,6 +21,10 @@ A simple UCI-compliant chess engine, written in C# using the [MinimalChess](http
     *   Communication with chess GUIs (Universal Chess Interface).
     *   Iterative deepening and time management in a separate thread.
 
+### Strength
+
+Adeon's rating is unknown; more testing is required to determine this. However, it is currently capable of winning against ~1000 ELO rated engines such as Toledo NanoChess.
+
 ### TODO
 
 * Implement opening book file
