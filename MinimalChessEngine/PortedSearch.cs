@@ -198,7 +198,7 @@ namespace MinimalChessEngine
                 return 0;
             }
 
-            int standPatScore = Evaluate(position);
+            int standPatScore = (int)position.SideToMove * position.Score;
 
             if (standPatScore >= beta)
                 return beta;

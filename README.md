@@ -21,13 +21,18 @@ A simple UCI-compliant chess engine, written in C# using the [MinimalChess](http
     *   Communication with chess GUIs (Universal Chess Interface).
     *   Iterative deepening and time management in a separate thread.
 
+### Usage
+
+Download a binary from the [Releases](https://github.com/KawaiiFiveO/Adeon/releases), then use it with a frontend such as [CuteChess](https://github.com/cutechess/cutechess).
+
 ### Strength
 
-Adeon's rating is unknown; more testing is required to determine this. However, it is currently capable of winning against ~1000 ELO rated engines such as Toledo NanoChess.
+Adeon's rating is unknown; more testing is required to determine this. It is currently estimated to play at an ~1800 ELO level.
 
 ### TODO
 
 * Implement opening book file
+* Add playing profiles
 
 ### Credits
 
