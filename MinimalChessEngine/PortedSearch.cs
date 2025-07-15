@@ -9,7 +9,7 @@ namespace MinimalChessEngine
     {
         // --- UNCHANGED SECTIONS (Constants, Tables, etc.) ---
         private const int MAX_DEPTH = 64;
-        private const int VALUE_MATE = 32000;
+        private const int VALUE_MATE = 9999;
         private const int VALUE_PAWN = 100;
         private const int VALUE_KNIGHT = 325;
         private const int VALUE_BISHOP = 350;
