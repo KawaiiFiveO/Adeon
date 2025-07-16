@@ -9,11 +9,6 @@ Adeon has a notable feature: its "Style" profiles allow you to customize the pla
 ### Features
 
 *   **Search Algorithm:** An improved version of TIChess's **NegaMax Alpha-Beta** search algorithm.
-*   **Evaluation:** The engine's chess knowledge is based on TIChess 4.0, featuring:
-    *   Material balance.
-    *   Positional heuristics for piece placement (e.g., center control).
-    *   Pawn structure analysis (doubled, isolated pawns).
-    *   King safety and endgame king activity.
 *   **Opening Book:** Loaded from a customizable `book.json` file.
 *   **Style Profiles:** `styles.json` enables support for different engine personalities and playing styles.
 *   **Move Ordering & Search Efficiency:** Search performance is enhanced through several techniques:
