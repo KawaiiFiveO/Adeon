@@ -25,7 +25,7 @@
   },
   "TheUnhingedGambiteer": {
     "Name": "Gambiteer",
-    "MaxDepth": 99,
+    "MaxDepth": 10,
     "PanicThreshold": -10000,
     "PanicChance": 0.0,
     "MaterialWeightMultiplier": 0.6,
