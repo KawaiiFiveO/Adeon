@@ -84,7 +84,7 @@ namespace MinimalChess
 
         public static bool IsCheckmate(int score) => Math.Abs(score) > CheckmateBase;
 
-        public static int Checkmate(Color color, int ply) => (int)color * (ply - CheckmateScore);
+        public static int Checkmate(Color color, int ply) => ply - CheckmateScore;
 
         public static double Linstep(double edge0, double edge1, double value)
         {

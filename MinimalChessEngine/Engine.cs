@@ -16,29 +16,31 @@ namespace MinimalChessEngine
         Board _board = new Board(Board.STARTING_POS_FEN);
         List<Board> _history = new List<Board>();
 
-        private PlayStyle _currentStyle = PlayStyle.Normal;
+        private PlayStyle _currentStyle = new PlayStyle();
+        private int _movesWithoutCaptureOrCheck = 0;
         private static readonly Random _random = new Random();
 
         public bool Running { get; private set; }
         public Color SideToMove => _board.SideToMove;
 
-        internal void SetStyle(string styleName)
+        internal void SetStyle(string styleUciName)
         {
-            switch (styleName)
-            {
-                case "Easy":
-                    _currentStyle = PlayStyle.Easy;
-                    break;
-                // ADD THE NEW CASE
-                case "TheChessDotComCheater":
-                    _currentStyle = PlayStyle.Cheater;
-                    break;
-                case "Normal":
-                default:
-                    _currentStyle = PlayStyle.Normal;
-                    break;
-            }
-            Uci.Log($"Style set to {_currentStyle.Name}");
+            _currentStyle = StyleManager.GetStyle(styleUciName);
+            Uci.Log($"Style set to {_currentStyle.Name} (UCI: {styleUciName})");
+        }
+
+        internal void Play(Move move)
+        {
+            Stop();
+            bool isCapture = _board[move.ToSquare] != Piece.None;
+            _board.Play(move);
+            _history.Add(new Board(_board));
+            bool isCheck = _board.IsChecked(_board.SideToMove);
+
+            if (isCapture || isCheck)
+                _movesWithoutCaptureOrCheck = 0;
+            else
+                _movesWithoutCaptureOrCheck++;
         }
 
 
@@ -51,18 +53,17 @@ namespace MinimalChessEngine
             _board = new Board(board);
             _history.Clear();
             _history.Add(new Board(_board));
-        }
-
-        internal void Play(Move move)
-        {
-            Stop();
-            _board.Play(move);
-            _history.Add(new Board(_board));
+            _movesWithoutCaptureOrCheck = 0; // Reset boredom on new position
         }
 
         // The Go methods are now simplified. They just pass the time info along.
         internal void Go(int maxDepth, int maxTime, long maxNodes)
         {
+            if (OpeningBook.TryGetMove(_board, _currentStyle, out Move bookMove))
+            {
+                Uci.BestMove(bookMove);
+                return;
+            }
             Stop();
             _time.Go(maxTime);
             StartSearch(maxDepth, maxNodes);
@@ -70,6 +71,11 @@ namespace MinimalChessEngine
 
         internal void Go(int maxTime, int increment, int movesToGo, int maxDepth, long maxNodes)
         {
+            if (OpeningBook.TryGetMove(_board, _currentStyle, out Move bookMove))
+            {
+                Uci.BestMove(bookMove);
+                return;
+            }
             Stop();
             // For the cheater, we might adjust movesToGo to save time, but we do it in StartSearch.
             if (_currentStyle.Name == "TheChessDotComCheater" && !IsInLosingPosition())
@@ -87,7 +93,7 @@ namespace MinimalChessEngine
             // To check if we're losing, we need a quick evaluation of the position.
             // We can do a very shallow search (depth 1 or 2) to get a rough idea.
             // This is a "scout" search.
-            var scoutSearch = new PortedSearch(_board, 1000); // Limit nodes
+            var scoutSearch = new PortedSearch(_board, 1000, _currentStyle, _movesWithoutCaptureOrCheck);
             scoutSearch.SearchDeeper(_board); // Search to depth 1
             int currentScore = scoutSearch.Score;
 
@@ -129,7 +135,7 @@ namespace MinimalChessEngine
                     Uci.Log("Cheater mode: PANICKING! Thinking deeper and for a long time...");
 
                     // 1. Think Deeper: Override the style's depth limit for this move.
-                    searchDepth = PlayStyle.Normal.MaxDepth; // Search as deep as possible (like "Normal" mode)
+                    searchDepth = 99; // Use "Normal" depth
 
                     // 2. Think Longer (Safely):
                     const int safetyBufferMs = 2000; // 2 seconds
@@ -151,7 +157,7 @@ namespace MinimalChessEngine
             foreach (var position in _history)
                 Transpositions.Store(position.ZobristHash, Transpositions.HISTORY, 0, SearchWindow.Infinite, 0, default);
 
-            _search = new PortedSearch(_board, _maxNodes);
+            _search = new PortedSearch(_board, _maxNodes, _currentStyle, _movesWithoutCaptureOrCheck);
             _time.StartInterval();
 
             // DEBUG

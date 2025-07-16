@@ -59,6 +59,11 @@ namespace MinimalChess
                 _zobristHash ^= Zobrist.SideToMove(_sideToMove);
             }
         }
+        public void SetSideToMoveForAnalysis(Color newSide)
+        {
+            // This will call the private setter, which correctly updates the Zobrist hash.
+            this.SideToMove = newSide;
+        }
 
         public Board() { }
 
@@ -665,8 +670,6 @@ namespace MinimalChess
             _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
         }
 
-        // Add this method anywhere inside the Board class in Board.cs
-
         public string ToFen()
         {
             string fen = "";
@@ -696,6 +699,24 @@ namespace MinimalChess
                     fen += '/';
             }
             // For debugging, we only need the position part of the FEN.
+            return fen;
+        }
+        public string ToFenKey()
+        {
+            // This generates the first 4 fields of a FEN string, which is what we use as a key.
+            string fen = ToFen(); // Use the existing ToFen() for the piece layout
+
+            fen += " " + (SideToMove == Color.White ? "w" : "b");
+
+            string castling = "";
+            if ((_castlingRights & CastlingRights.WhiteKingside) != 0) castling += "K";
+            if ((_castlingRights & CastlingRights.WhiteQueenside) != 0) castling += "Q";
+            if ((_castlingRights & CastlingRights.BlackKingside) != 0) castling += "k";
+            if ((_castlingRights & CastlingRights.BlackQueenside) != 0) castling += "q";
+            fen += " " + (string.IsNullOrEmpty(castling) ? "-" : castling);
+
+            fen += " " + (_enPassantSquare == -1 ? "-" : Notation.ToSquareName((byte)_enPassantSquare));
+
             return fen;
         }
     }

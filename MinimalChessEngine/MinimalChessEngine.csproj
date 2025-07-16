@@ -6,6 +6,30 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="config\book.json" />
+    <None Remove="config\styles.json" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<!-- This ensures styles.json is treated as content and copied to the output directory -->
+		<Content Include="styles.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<!-- This is the magic line: it tells the single-file publish to NOT embed this file -->
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
+
+		<!-- Do the same for book.json -->
+		<Content Include="book.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
+	</ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="9.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MinimalChess\MinimalChess.csproj" />
   </ItemGroup>
 

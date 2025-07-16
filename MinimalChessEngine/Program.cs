@@ -1,5 +1,6 @@
 ﻿using MinimalChess;
 using System;
+using System.Collections.Generic;
 using System.Runtime;
 using System.Threading.Tasks;
 
@@ -15,6 +16,8 @@ namespace MinimalChessEngine
         private static async Task Main()
         {
             Console.WriteLine(NAME_VERSION);
+            StyleManager.LoadStyles();
+            OpeningBook.Load();
             Start();
             while (_engine.Running)
             {
@@ -39,7 +42,9 @@ namespace MinimalChessEngine
                     Console.WriteLine($"id name {NAME_VERSION}");
                     Console.WriteLine($"id author {AUTHOR}");
                     Console.WriteLine($"option name Hash type spin default {Transpositions.DEFAULT_SIZE_MB} min 1 max 2047");
-                    Console.WriteLine($"option name Style type combo default Normal var Normal var Easy var TheChessDotComCheater");
+                    List<string> styleNames = StyleManager.GetStyleUciNames();
+                    string styleOption = $"option name Style type combo default Normal var {string.Join(" var ", styleNames)}";
+                    Console.WriteLine(styleOption);
                     Console.WriteLine("uciok");
                     break;
                 case "isready":
@@ -77,8 +82,8 @@ namespace MinimalChessEngine
             }
             else if (tokens.Length > 4 && tokens[1] == "name" && tokens[2] == "Style" && tokens[3] == "value")
             {
-                string styleName = tokens[4];
-                _engine.SetStyle(styleName); // We will create this method in Engine.cs next
+                string styleUciName = tokens[4];
+                _engine.SetStyle(styleUciName);
             }
         }
 

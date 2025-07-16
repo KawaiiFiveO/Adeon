@@ -1,0 +1,34 @@
+{
+  "Normal": {
+    "Name": "Normal",
+    "MaxDepth": 99,
+    "PanicThreshold": -10000,
+    "PanicChance": 0.0,
+    "MaterialWeightMultiplier": 1.0,
+    "KingAttackBonus": 0
+  },
+  "Easy": {
+    "Name": "Easy",
+    "MaxDepth": 5,
+    "PanicThreshold": -10000,
+    "PanicChance": 0.0,
+    "MaterialWeightMultiplier": 1.0,
+    "KingAttackBonus": 0
+  },
+  "TheChessDotComCheater": {
+    "Name": "Cheater",
+    "MaxDepth": 8,
+    "PanicThreshold": -150,
+    "PanicChance": 0.75,
+    "MaterialWeightMultiplier": 1.0,
+    "KingAttackBonus": 0
+  },
+  "TheUnhingedGambiteer": {
+    "Name": "Gambiteer",
+    "MaxDepth": 99,
+    "PanicThreshold": -10000,
+    "PanicChance": 0.0,
+    "MaterialWeightMultiplier": 0.6,
+    "KingAttackBonus": 50
+  }
+}

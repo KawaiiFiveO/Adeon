@@ -7,43 +7,12 @@ namespace MinimalChessEngine
 {
     public class PortedSearch
     {
-        // --- UNCHANGED SECTIONS (Constants, Tables, etc.) ---
+        // --- Constants ---
         private const int MAX_DEPTH = 64;
         private const int VALUE_MATE = 9999;
-        private const int VALUE_PAWN = 100;
-        private const int VALUE_KNIGHT = 325;
-        private const int VALUE_BISHOP = 350;
-        private const int VALUE_ROOK = 500;
-        private const int VALUE_QUEEN = 900;
-        private const int VALUE_KING = 0;
-        private const int VALUE_ENDGAME = (4 * VALUE_ROOK + (2 * VALUE_BISHOP));
-        private static readonly int[] PieceValues = { 0, VALUE_PAWN, VALUE_KNIGHT, VALUE_BISHOP, VALUE_ROOK, VALUE_QUEEN, VALUE_KING };
-        private static readonly sbyte[] CenterTable = {
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-             0,  4,  0,  8, 12, 12,  8,  0,  4,  0, 0,  4,  8, 12, 16, 16, 12,  8,  4,  0,
-             0,  8, 12, 16, 20, 20, 16, 12,  8,  0, 0, 12, 16, 20, 24, 24, 20, 16, 12,  0,
-             0, 12, 16, 20, 24, 24, 20, 16, 12,  0, 0,  8, 12, 16, 20, 20, 16, 12,  8,  0,
-             0,  4,  8, 12, 16, 16, 12,  8,  4,  0, 0,  4,  0,  8, 12, 12,  8,  0,  4,  0,
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0
-        };
-        private static readonly sbyte[] WpFieldValues = {
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  4,  4,  0,  0,  0,  6,  6,  6,  0,
-             0,  6,  6,  8,  8,  8,  4,  6,  6,  0, 0,  8,  8, 16, 22, 22,  4,  4,  4,  0,
-             0, 10, 10, 20, 26, 26, 10, 10, 10, 0, 0, 12, 12, 22, 28, 28, 14, 14, 14, 0,
-             0, 18, 18, 28, 32, 32, 20, 20, 20, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0
-        };
-        private static readonly sbyte[] BpFieldValues = {
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-             0, 18, 18, 28, 32, 32, 20, 20, 20, 0, 0, 12, 12, 22, 28, 28, 14, 14, 14, 0,
-             0, 10, 10, 20, 26, 26, 10, 10, 10, 0, 0,  8,  8, 16, 22, 22,  4,  4,  4,  0,
-             0,  6,  6,  8,  8,  8,  4,  6,  6,  0, 0,  4,  4,  0,  0,  0,  6,  6,  6,  0,
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-             0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0
-        };
-        private static readonly int[] _map64toMailbox;
-        static PortedSearch() { _map64toMailbox = new int[64]; for (int r = 0; r < 8; r++) for (int f = 0; f < 8; f++) _map64toMailbox[r * 8 + f] = (r + 2) * 10 + (f + 1); }
+        private static readonly int[] PieceValues = { 0, 100, 325, 350, 500, 900, 20000 };
+
+        // --- Members ---
         public int Depth { get; private set; }
         public int Score { get; private set; }
         public long NodesVisited { get; private set; }
@@ -53,8 +22,20 @@ namespace MinimalChessEngine
         private long _maxNodes;
         private readonly Move[][] _pvTable;
         private readonly Move[,] _killerMoves;
-        public PortedSearch(Board board, long maxNodes = long.MaxValue) { _killerMoves = new Move[MAX_DEPTH, 2]; _pvTable = new Move[MAX_DEPTH][]; for (int i = 0; i < MAX_DEPTH; i++) _pvTable[i] = new Move[MAX_DEPTH]; }
-        public PortedSearch(int searchDepth, Board board) : this(board) { while (Depth < searchDepth) SearchDeeper(board); }
+
+        // --- Style-specific members ---
+        private readonly PlayStyle _currentStyle;
+        private readonly int _movesWithoutCaptureOrCheck;
+
+        public PortedSearch(Board board, long maxNodes, PlayStyle style, int boredomCounter)
+        {
+            _killerMoves = new Move[MAX_DEPTH, 2];
+            _pvTable = new Move[MAX_DEPTH][];
+            for (int i = 0; i < MAX_DEPTH; i++) _pvTable[i] = new Move[MAX_DEPTH];
+
+            _currentStyle = style;
+            _movesWithoutCaptureOrCheck = boredomCounter;
+        }
 
         public void SearchDeeper(Board root, Func<bool> isTimeUp = null, long maxNodes = long.MaxValue)
         {
@@ -63,14 +44,11 @@ namespace MinimalChessEngine
             _maxNodes = maxNodes;
             NodesVisited = 0;
             Aborted = false;
-
-            Score = AlphaBeta(root, 0, -VALUE_MATE, VALUE_MATE, Depth);
-
+            Score = AlphaBeta(root, 0, -VALUE_MATE - 1, VALUE_MATE + 1, Depth);
             if (!Aborted)
             {
                 int pvLength = 0;
-                while (pvLength < Depth && _pvTable[0][pvLength] != default)
-                    pvLength++;
+                while (pvLength < Depth && _pvTable[0][pvLength] != default) pvLength++;
                 PrincipalVariation = new Move[pvLength];
                 Array.Copy(_pvTable[0], PrincipalVariation, pvLength);
             }
@@ -78,71 +56,31 @@ namespace MinimalChessEngine
 
         private int AlphaBeta(Board position, int ply, int alpha, int beta, int depth)
         {
-            if (ply >= MAX_DEPTH - 1)
-            {
-                return Evaluate(position);
-            }
-
+            if (ply >= MAX_DEPTH - 1) return (int)position.SideToMove * Evaluate(position);
             if (ply > 0)
             {
-                if ((NodesVisited & 2047) == 0 && (_isTimeUp() || NodesVisited >= _maxNodes))
-                {
-                    Aborted = true;
-                    return 0;
-                }
-                alpha = Math.Max(alpha, -VALUE_MATE + ply);
-                beta = Math.Min(beta, VALUE_MATE - ply - 1);
-                if (alpha >= beta)
-                    return alpha;
+                if ((NodesVisited & 2047) == 0 && (_isTimeUp() || NodesVisited >= _maxNodes)) { Aborted = true; return 0; }
+                if (alpha >= beta) return alpha;
             }
-
             _pvTable[ply][ply] = default;
-
-            if (Transpositions.GetScore(position.ZobristHash, depth, ply, new SearchWindow(alpha, beta), out int ttScore))
-                return ttScore;
+            if (ply > 0 && Transpositions.GetScore(position.ZobristHash, depth, ply, new SearchWindow(alpha, beta), out int ttScore)) return ttScore;
 
             bool isChecked = position.IsChecked(position.SideToMove);
-            if (isChecked)
-                depth++;
+            if (isChecked) depth++;
+            if (depth <= 0) return QuiescenceSearch(position, ply, alpha, beta);
 
-            if (depth <= 0)
+            if (!isChecked && depth >= 3 && HasMajorPieces(position, position.SideToMove) && (int)position.SideToMove * Evaluate(position) >= beta)
             {
-                return QuiescenceSearch(position, ply, alpha, beta);
-            }
-
-            // --- NULL MOVE PRUNING (NMP) ---
-            // We add several safety checks to avoid pruning in the wrong situations.
-            // 1. Don't do NMP if the side to move is in check.
-            // 2. Don't do NMP if we are very close to the search horizon (depth < 3).
-            // 3. Don't do NMP if there are very few pieces left (potential zugzwang).
-            // 4. Only try NMP if the static evaluation is already good (above beta).
-
-            // A simple check for "few pieces" - e.g., no major pieces left for the current player.
-            bool hasMajorPieces = HasMajorPieces(position, position.SideToMove);
-
-            if (!isChecked && depth >= 3 && hasMajorPieces && (int)position.SideToMove * position.Score >= beta)
-            {
-                // The depth reduction factor 'R' is standard. 2 or 3 are common values.
                 int R = 2;
                 Board nullMoveBoard = new Board(position);
                 nullMoveBoard.PlayNullMove();
-
-                // Search with a "null window" (-beta, -beta+1) to make the search faster.
-                // We only care if the score is >= beta.
                 int nullScore = -AlphaBeta(nullMoveBoard, ply + 1, -beta, -beta + 1, depth - 1 - R);
-
-                if (nullScore >= beta)
-                {
-                    // The null move was "too good". The opponent couldn't refute our strong position
-                    // even with an extra turn. We can prune this node and return beta.
-                    return beta;
-                }
+                if (nullScore >= beta) return beta;
             }
 
             NodesVisited++;
             var moves = GetOrderedMoves(position, ply, isChecked);
-            if (moves.Count == 0)
-                return isChecked ? -VALUE_MATE + ply : 0;
+            if (moves.Count == 0) return isChecked ? Evaluation.Checkmate(position.SideToMove, ply) : 0;
 
             Move bestMove = default;
             int scoreType = 0;
@@ -153,80 +91,47 @@ namespace MinimalChessEngine
             {
                 movesSearched++;
                 Board child = new Board(position, move);
-
-                // CRITICAL FIX: Check if the move was legal.
-                // A pseudo-legal move is illegal if it leaves the king in check.
-                // The color of the king to check is the one that just moved.
-                if (child.IsChecked(position.SideToMove))
-                {
-                    continue; // Skip illegal moves
-                }
+                if (child.IsChecked(position.SideToMove)) continue;
                 legalMovesPlayed++;
 
-                int score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
-
-                // --- Late Move Reductions Logic ---
+                int score;
                 if (depth >= 3 && movesSearched > 4 && !isChecked && position[move.ToSquare] == Piece.None)
                 {
-                    // This is a quiet move late in the list. Search with reduced depth.
                     score = -AlphaBeta(child, ply + 1, -alpha - 1, -alpha, depth - 2);
-
-                    // If it was better than expected, we must re-search at full depth.
-                    if (score > alpha)
+                    if (score > alpha && score < beta)
                     {
                         score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
                     }
                 }
                 else
                 {
-                    // Search the first few moves, or all moves in check, at full depth.
                     score = -AlphaBeta(child, ply + 1, -beta, -alpha, depth - 1);
                 }
 
-                if (Aborted)
-                {
-                    return 0;
-                }
-
+                if (Aborted) return 0;
                 if (score > alpha)
                 {
                     alpha = score;
                     bestMove = move;
                     scoreType = 1;
-
                     _pvTable[ply][ply] = move;
                     if (ply + 1 < MAX_DEPTH)
                     {
                         for (int nextPly = ply + 1; nextPly < MAX_DEPTH; nextPly++)
                         {
-                            if (_pvTable[ply + 1][nextPly] == default)
-                            {
-                                _pvTable[ply][nextPly] = default;
-                                break;
-                            }
+                            if (_pvTable[ply + 1][nextPly] == default) { _pvTable[ply][nextPly] = default; break; }
                             _pvTable[ply][nextPly] = _pvTable[ply + 1][nextPly];
                         }
                     }
-
                     if (alpha >= beta)
                     {
                         scoreType = 2;
-                        bool isCapture = position[move.ToSquare] != Piece.None;
-                        if (!isCapture)
-                        {
-                            _killerMoves[ply, 1] = _killerMoves[ply, 0];
-                            _killerMoves[ply, 0] = move;
-                        }
+                        if (position[move.ToSquare] == Piece.None) { _killerMoves[ply, 1] = _killerMoves[ply, 0]; _killerMoves[ply, 0] = move; }
                         break;
                     }
                 }
             }
-
-            // If no legal moves were found, it's either checkmate or stalemate.
-            if (legalMovesPlayed == 0)
-            {
-                return isChecked ? -VALUE_MATE + ply : 0;
-            }
+            if (legalMovesPlayed == 0) return isChecked ? Evaluation.Checkmate(position.SideToMove, ply) : 0;
 
             var window = new SearchWindow(alpha, beta);
             if (scoreType == 0) Transpositions.Store(position.ZobristHash, depth, ply, window, alpha, bestMove);
@@ -236,91 +141,78 @@ namespace MinimalChessEngine
             return alpha;
         }
 
+
         private int QuiescenceSearch(Board position, int ply, int alpha, int beta)
         {
-            if (ply >= MAX_DEPTH - 1)
-            {
-                return Evaluate(position);
-            }
-
+            if (ply >= MAX_DEPTH - 1) return (int)position.SideToMove * Evaluate(position);
             NodesVisited++;
-            if ((NodesVisited & 2047) == 0 && _isTimeUp())
-            {
-                Aborted = true;
-                return 0;
-            }
+            if ((NodesVisited & 2047) == 0 && _isTimeUp()) { Aborted = true; return 0; }
 
-            int standPatScore = (int)position.SideToMove * position.Score;
+            int standPatScore = (int)position.SideToMove * Evaluate(position);
 
-            if (standPatScore >= beta)
-                return beta;
-            if (standPatScore > alpha)
-                alpha = standPatScore;
+            if (standPatScore >= beta) return beta;
+            if (standPatScore > alpha) alpha = standPatScore;
 
             var captures = GetOrderedMoves(position, ply, position.IsChecked(position.SideToMove), true);
 
             foreach (var move in captures)
             {
                 Board child = new Board(position, move);
-                // Add the same legality check here for safety, especially for check evasions.
-                if (child.IsChecked(position.SideToMove))
-                {
-                    continue;
-                }
-
+                if (child.IsChecked(position.SideToMove)) continue;
                 int score = -QuiescenceSearch(child, ply + 1, -beta, -alpha);
-
                 if (Aborted) return 0;
-
-                if (score >= beta)
-                    return beta;
-                if (score > alpha)
-                    alpha = score;
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
             }
-
             return alpha;
         }
 
         private List<Move> GetOrderedMoves(Board position, int ply, bool isChecked, bool capturesOnly = false)
         {
+            if (_currentStyle.Name == "Gambiteer" && _movesWithoutCaptureOrCheck >= 10 && !isChecked)
+            {
+                Uci.Log("Gambiteer is BORED! Forcing chaos...");
+                var allMoves = new List<Move>();
+                position.CollectMoves(m => allMoves.Add(m));
+                var legalMoves = allMoves.Where(m => !new Board(position, m).IsChecked(position.SideToMove)).ToList();
+                Move bestSacrifice = default;
+                int bestSacValue = -1;
+                foreach (var move in legalMoves)
+                {
+                    if (position[move.ToSquare] == Piece.None && position.IsSquareAttackedBy(move.ToSquare, Pieces.Flip(position.SideToMove)))
+                    {
+                        int pieceValue = PieceValues[Pieces.Order(position[move.FromSquare])];
+                        if (pieceValue > bestSacValue) { bestSacValue = pieceValue; bestSacrifice = move; }
+                    }
+                }
+                if (bestSacrifice != default) return new List<Move> { bestSacrifice };
+            }
+
             var moveScores = new List<(Move move, int score)>();
             var allPseudoLegalMoves = new List<Move>();
-
             if (capturesOnly || isChecked)
             {
-                if (isChecked)
-                    position.CollectMoves(m => allPseudoLegalMoves.Add(m));
-                else
-                    position.CollectCaptures(m => allPseudoLegalMoves.Add(m));
-
+                if (isChecked) position.CollectMoves(m => allPseudoLegalMoves.Add(m));
+                else position.CollectCaptures(m => allPseudoLegalMoves.Add(m));
                 foreach (var m in allPseudoLegalMoves)
                 {
                     Piece victim = position[m.ToSquare];
                     if (victim == Piece.None) victim = Piece.Pawn.OfColor(Pieces.Flip(position.SideToMove));
                     Piece aggressor = position[m.FromSquare];
-                    int score = 1000000 + (PieceValues[Pieces.Order(victim)] * 10) - PieceValues[Pieces.Order(aggressor)];
-                    moveScores.Add((m, score));
+                    moveScores.Add((m, 1000000 + (PieceValues[Pieces.Order(victim)] * 10) - PieceValues[Pieces.Order(aggressor)]));
                 }
             }
             else
             {
                 position.CollectMoves(m => allPseudoLegalMoves.Add(m));
-
                 Transpositions.GetBestMove(position, out Move hashMove);
-
-                if (hashMove != default && !allPseudoLegalMoves.Contains(hashMove))
-                {
-                    hashMove = default;
-                }
-
+                if (hashMove != default && !allPseudoLegalMoves.Contains(hashMove)) hashMove = default;
                 Move killer1 = _killerMoves[ply, 0];
                 Move killer2 = _killerMoves[ply, 1];
-
                 foreach (var m in allPseudoLegalMoves)
                 {
                     int score = 0;
                     bool isCapture = position[m.ToSquare] != Piece.None;
-
                     if (m == hashMove) score = 2000000;
                     else if (isCapture)
                     {
@@ -330,105 +222,70 @@ namespace MinimalChessEngine
                     }
                     else if (m == killer1) score = 900000;
                     else if (m == killer2) score = 800000;
-
                     moveScores.Add((m, score));
                 }
             }
-
             return moveScores.OrderByDescending(item => item.score).Select(item => item.move).ToList();
         }
 
         private int Evaluate(Board position)
         {
-            int[] whitePawnsPerColumn = new int[8];
-            int[] blackPawnsPerColumn = new int[8];
-            int[] whiteRooksPerColumn = new int[8];
-            int[] blackRooksPerColumn = new int[8];
-            int whiteMaterial = 0, blackMaterial = 0;
-            int whiteBishops = 0, blackBishops = 0;
+            int finalScore = position.Score;
 
-            for (int i = 0; i < 64; i++)
+            if (_currentStyle.Name == "Gambiteer")
             {
-                Piece piece = position[i];
-                if (piece == Piece.None) continue;
-                int file = i % 8;
-                int value = PieceValues[Pieces.Order(piece)];
-                if (piece.IsWhite()) whiteMaterial += value; else blackMaterial += value;
-
-                switch (piece & Piece.TypeMask)
+                // --- 1. Material Weight Penalty (from White's perspective) ---
+                int whiteMaterial = 0;
+                int blackMaterial = 0;
+                for (int i = 0; i < 64; i++)
                 {
-                    case Piece.Pawn: if (piece.IsWhite()) whitePawnsPerColumn[file]++; else blackPawnsPerColumn[file]++; break;
-                    case Piece.Rook: if (piece.IsWhite()) whiteRooksPerColumn[file]++; else blackRooksPerColumn[file]++; break;
-                    case Piece.Bishop: if (piece.IsWhite()) whiteBishops++; else blackBishops++; break;
+                    Piece p = position[i];
+                    if (p != Piece.None && (p & Piece.TypeMask) != Piece.King)
+                    {
+                        if (p.Color() == Color.White) whiteMaterial += PieceValues[Pieces.Order(p)];
+                        else blackMaterial += PieceValues[Pieces.Order(p)];
+                    }
+                }
+                int whitePenalty = (int)((1.0 - _currentStyle.MaterialWeightMultiplier) * whiteMaterial);
+                int blackPenalty = (int)((1.0 - _currentStyle.MaterialWeightMultiplier) * blackMaterial);
+                finalScore -= whitePenalty;
+                finalScore += blackPenalty;
+
+                // --- 2. King Attack Bonus (from White's perspective) ---
+                int blackKingSq = FindKing(position, Color.Black);
+                if (blackKingSq != -1)
+                {
+                    int attackCount = 0;
+                    foreach (int zoneSq in GetKingZone(blackKingSq))
+                    {
+                        if (position.IsSquareAttackedBy(zoneSq, Color.White))
+                            attackCount++;
+                    }
+                    finalScore += attackCount * _currentStyle.KingAttackBonus;
+
+                    if (!KingHasMoves(position, blackKingSq))
+                        finalScore += _currentStyle.KingAttackBonus / 2; // Trapped king bonus
+                }
+
+                int whiteKingSq = FindKing(position, Color.White);
+                if (whiteKingSq != -1)
+                {
+                    int attackCount = 0;
+                    foreach (int zoneSq in GetKingZone(whiteKingSq))
+                    {
+                        if (position.IsSquareAttackedBy(zoneSq, Color.Black))
+                            attackCount++;
+                    }
+                    finalScore -= attackCount * _currentStyle.KingAttackBonus;
+
+                    if (!KingHasMoves(position, whiteKingSq))
+                        finalScore -= _currentStyle.KingAttackBonus / 2; // Trapped king penalty
                 }
             }
 
-            int materialBalance = whiteMaterial - blackMaterial;
-            int materialSum = whiteMaterial + blackMaterial;
-            int posValue = 0;
-
-            for (int i = 0; i < 64; i++)
-            {
-                Piece piece = position[i];
-                if (piece == Piece.None) continue;
-
-                int mailboxIndex = _map64toMailbox[i];
-                int rank = i / 8;
-                int file = i % 8;
-                Color color = piece.Color();
-
-                switch (piece & Piece.TypeMask)
-                {
-                    case Piece.Pawn:
-                        if (color == Color.White) posValue += WhitePawnEvaluation(rank, file, materialSum, whitePawnsPerColumn, blackRooksPerColumn);
-                        else posValue -= BlackPawnEvaluation(rank, file, materialSum, blackPawnsPerColumn, whiteRooksPerColumn);
-                        break;
-                    case Piece.Knight:
-                        posValue += (color == Color.White ? 1 : -1) * (CenterTable[mailboxIndex] >> 1);
-                        break;
-                    case Piece.Rook:
-                        if (color == Color.White && blackPawnsPerColumn[file] == 0) posValue += 8;
-                        if (color == Color.Black && whitePawnsPerColumn[file] == 0) posValue -= 8;
-                        break;
-                    case Piece.King:
-                        if (materialSum < VALUE_ENDGAME) posValue += (color == Color.White ? 1 : -1) * CenterTable[mailboxIndex];
-                        else posValue -= (color == Color.White ? 1 : -1) * (CenterTable[mailboxIndex] << 2);
-                        break;
-                }
-            }
-
-            if (whiteBishops >= 2) posValue += 15;
-            if (blackBishops >= 2) posValue -= 15;
-
-            int finalScore = materialBalance + posValue;
-            return (int)position.SideToMove * finalScore;
+            return finalScore;
         }
 
-        private int WhitePawnEvaluation(int rank, int file, int materialSum, int[] myPawns, int[] enemyRooks)
-        {
-            int value = 0;
-            int mailboxIndex = _map64toMailbox[rank * 8 + file];
-            if (materialSum > VALUE_ENDGAME) value += WpFieldValues[mailboxIndex];
-            else value += (rank - 1) * 8;
-            if (myPawns[file] > 1) value -= 15;
-            if ((file == 0 || myPawns[file - 1] == 0) && (file == 7 || myPawns[file + 1] == 0)) value -= 12;
-            if (enemyRooks[file] > 0) value -= 8;
-            return value;
-        }
-
-        private int BlackPawnEvaluation(int rank, int file, int materialSum, int[] myPawns, int[] enemyRooks)
-        {
-            int value = 0;
-            int mailboxIndex = _map64toMailbox[rank * 8 + file];
-            if (materialSum > VALUE_ENDGAME) value += BpFieldValues[mailboxIndex];
-            else value += (6 - rank) * 8;
-            if (myPawns[file] > 1) value -= 15;
-            if ((file == 0 || myPawns[file - 1] == 0) && (file == 7 || myPawns[file + 1] == 0)) value -= 12;
-            if (enemyRooks[file] > 0) value -= 8;
-            return value;
-        }
-
-        // This is a simple way to check for potential zugzwang positions.
         private bool HasMajorPieces(Board board, Color side)
         {
             for (int i = 0; i < 64; i++)
@@ -437,12 +294,50 @@ namespace MinimalChessEngine
                 if (p != Piece.None && p.Color() == side)
                 {
                     Piece type = p & Piece.TypeMask;
-                    if (type != Piece.Pawn && type != Piece.King)
+                    if (type != Piece.Pawn && type != Piece.King) return true;
+                }
+            }
+            return false;
+        }
+
+        private int FindKing(Board b, Color c)
+        {
+            Piece king = Piece.King.OfColor(c);
+            for (int i = 0; i < 64; i++) if (b[i] == king) return i;
+            return -1;
+        }
+
+        private IEnumerable<int> GetKingZone(int kingSq)
+        {
+            int rank = kingSq / 8;
+            int file = kingSq % 8;
+            for (int r = rank - 1; r <= rank + 1; r++)
+            {
+                for (int f = file - 1; f <= file + 1; f++)
+                {
+                    if (r >= 0 && r < 8 && f >= 0 && f < 8)
                     {
-                        // Found a Rook, Knight, Bishop, or Queen.
-                        return true;
+                        if (r != rank || f != file) // Exclude the king's own square
+                            yield return r * 8 + f;
                     }
                 }
+            }
+        }
+        private bool KingHasMoves(Board b, int kingSq)
+        {
+            // We need to check from the perspective of the king's owner
+            Board perspectiveBoard = new Board(b);
+
+            // Use the new, safe, public method
+            perspectiveBoard.SetSideToMoveForAnalysis(b[kingSq].Color());
+
+            var moves = new List<Move>();
+            perspectiveBoard.CollectMoves(kingSq, m => moves.Add(m));
+            foreach (var move in moves)
+            {
+                // A move is legal if it doesn't result in the king being checked
+                if (!new Board(perspectiveBoard, move).IsChecked(perspectiveBoard.SideToMove))
+                    return true;
             }
             return false;
         }
