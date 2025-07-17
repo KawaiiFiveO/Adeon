@@ -42,6 +42,8 @@ namespace MinimalChessEngine
             if (_book == null || _book.Count == 0) return false;
 
             string fenKey = board.ToFenKey();
+            //Uci.Log($"[DEBUG] Trying to find book key: '{fenKey}'");
+
             if (_book.TryGetValue(fenKey, out List<BookMove> bookMoves))
             {
                 List<BookMove> movesToConsider = bookMoves;
